@@ -52,6 +52,7 @@ export default function CanvasKonva() {
   return (
     <div>
       <h2>Rita på bilden (React-Konva)</h2>
+      <p>Testar update 😼</p>
       <Stage
         width={800}
         height={600}
