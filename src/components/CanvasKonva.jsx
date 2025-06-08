@@ -17,6 +17,8 @@ import chaletBasement from "../assets/ChaletRWBasement.jpg";
 
 export default function CanvasApp() {
   const [image] = useImage(chaletBasement);
+  // Test to save a image
+  const stageRef = useRef(null);
 
   const [tool, setTool] = useState("pen");
   const [color, setColor] = useState("#ff0000");
@@ -104,6 +106,11 @@ export default function CanvasApp() {
     }
   };
 
+  const handleSave = async () => {
+    if (!stageRef.current) return;
+    const dataURL = stageRef.current.toDataURL({ pixelRatio: 2 });
+  }
+
 
   return (
       <div className="app-wrapper">
@@ -114,6 +121,7 @@ export default function CanvasApp() {
         <div className="main-layout">
           <div className="canvas-container">
             <Stage
+                ref={stageRef}
                 width={1024}
                 height={768}
                 draggable={false}
@@ -252,7 +260,7 @@ export default function CanvasApp() {
           </div>
           <div className="note-buttons">
             <button className="export">Export strategy</button>
-            <button className="save">Save</button>
+            <button className="save" onClick={handleSave}>Save</button> {/* 4. Anropa funktionen här */}
             <button className="delete">Delete</button>
           </div>
         </div>
