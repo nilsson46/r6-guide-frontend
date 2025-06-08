@@ -107,10 +107,32 @@ export default function CanvasApp() {
   };
 
   const handleSave = async () => {
-    if (!stageRef.current) return;
-    const dataURL = stageRef.current.toDataURL({ pixelRatio: 2 });
-  }
+  if (!stageRef.current) return;
 
+  const dataURL = stageRef.current.toDataURL({ pixelRatio: 2 });
+  const blob = await fetch(dataURL).then((res) => res.blob());
+  const formData = new FormData();
+  formData.append("file", blob, "canvas.png");
+  formData.append("name", "My strategy n"); // Ändra till dynamiskt om du vill
+  formData.append("description", "Beskrivning av st");
+  //formData.append("imageUrl", ""); // Ändra till dynamiskt om du vill
+    // url for get http://localhost:8090/api/maps/<id>/image
+  try {
+    const response = await fetch("http://localhost:8090/api/maps/upload-image", {
+      method: "POST",
+      body: formData,
+    });
+
+    if (response.ok) {
+      alert("Image uploaded successfully!");
+    } else {
+      alert("Error uploading image.");
+    }
+  } catch (error) {
+    console.error("Network error:", error);
+    alert("Failed to upload image.");
+  }
+};
 
   return (
       <div className="app-wrapper">
