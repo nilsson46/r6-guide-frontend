@@ -1,83 +1,264 @@
 import React, { useState, useRef } from "react";
 import { Stage, Layer, Image, Line } from "react-konva";
-import useImage from "use-image"; // Hook för att ladda bilder smidigt
-import backgroundImage from "../assets/r6-maps-coastline-blueprint-1.jpg";
+import useImage from "use-image";
+import { nanoid } from "nanoid";
+import "./CanvasApp.css";
+import {
+  Pen,
+  MousePointer,
+  Trash2,
+  Undo2,
+  Type,
+  Brush,
+  Hand,
+} from "lucide-react";
 
-export default function CanvasKonva() {
-  // Ladda in bakgrundsbilden
-  const [image] = useImage(backgroundImage);
+import chaletBasement from "../assets/ChaletRWBasement.jpg";
 
-  // State för att spara alla ritade linjer (varje linje är en array av punkter)
+export default function CanvasApp() {
+  const [image] = useImage(chaletBasement);
+
+  const [tool, setTool] = useState("pen");
+  const [color, setColor] = useState("#ff0000");
+  const [selectedId, setSelectedId] = useState(null);
   const [lines, setLines] = useState([]);
 
-  // Ref för att hålla koll på om vi ritar just nu (musknapp nedtryckt)
   const isDrawing = useRef(false);
 
-  // Starta ritning - lägg till en ny linje med startpunkt
+  // Image scaling
+  const stageWidth = 1024;
+  const stageHeight = 768;
+
+  const scaleX = stageWidth / (image?.width || 1);
+  const scaleY = stageHeight / (image?.height || 1);
+  const fitScale = Math.min(scaleX, scaleY);
+
+  const imageOffsetX = (stageWidth - (image?.width || 0) * fitScale) / 2;
+  const imageOffsetY = (stageHeight - (image?.height || 0) * fitScale) / 2;
+
+  // Sidebar Tabs / Switch
+  const [activeTab, setActiveTab] = useState("operators");
+  const [team, setTeam] = useState("attack");
+
+  // === Handlers ===
   const handleMouseDown = (e) => {
+    if (tool !== "pen") return;
+
     isDrawing.current = true;
 
-    // Hämta muspositionen relativt canvas
-    const pos = e.target.getStage().getPointerPosition();
+    const stage = e.target.getStage();
+    const pointer = stage.getPointerPosition();
 
-    // Lägg till en ny linje som börjar på denna punkt
-    setLines([...lines, { points: [pos.x, pos.y] }]);
+    const point = {
+      x: (pointer.x - imageOffsetX) / fitScale,
+      y: (pointer.y - imageOffsetY) / fitScale,
+    };
+
+    const newLine = {
+      id: nanoid(),
+      points: [point.x, point.y],
+      color,
+    };
+    setLines([...lines, newLine]);
+    setSelectedId(newLine.id);
   };
 
-  // När musen flyttas - lägg till punkter till senaste linjen
   const handleMouseMove = (e) => {
-    // Om vi inte ritar, gör inget
-    if (!isDrawing.current) return;
+    if (!isDrawing.current || tool !== "pen") return;
 
-    // Hämta muspositionen
     const stage = e.target.getStage();
-    const point = stage.getPointerPosition();
+    const pointer = stage.getPointerPosition();
 
-    // Hämta senaste linjen som vi ritade på
-    let lastLine = lines[lines.length - 1];
+    const point = {
+      x: (pointer.x - imageOffsetX) / fitScale,
+      y: (pointer.y - imageOffsetY) / fitScale,
+    };
 
-    // Lägg till ny punkt till linjens punktlista
+    const lastLine = lines[lines.length - 1];
     lastLine.points = lastLine.points.concat([point.x, point.y]);
 
-    // Uppdatera linjer - ersätt sista linjen med nya punkter
     lines.splice(lines.length - 1, 1, lastLine);
     setLines(lines.concat());
   };
 
-  // Sluta rita när musknappen släpps eller lämnar canvas
   const handleMouseUp = () => {
+    if (tool !== "pen") return;
     isDrawing.current = false;
   };
 
-  return (
-    <div>
-      <h2>Rita på bilden (React-Konva)</h2>
-      <Stage
-        width={800}
-        height={600}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        style={{ border: "1px solid black" }}
-      >
-        <Layer>
-          {/* Visa bakgrundsbild */}
-          <Image image={image} />
+  const deleteSelected = () => {
+    if (!selectedId) return;
+    setLines((prev) => prev.filter((line) => line.id !== selectedId));
+    setSelectedId(null);
+  };
 
-          {/* Visa alla ritade linjer */}
-          {lines.map((line, i) => (
-            <Line
-              key={i}
-              points={line.points}
-              stroke="red"           // Linjefärg
-              strokeWidth={3}        // Linjetjocklek
-              tension={0.5}          // Gör linjer mjuka
-              lineCap="round"        // Rund ändpunkt på linjer
-              globalCompositeOperation="source-over"
-            />
-          ))}
-        </Layer>
-      </Stage>
-    </div>
+  const undo = () => {
+    setLines((prev) => prev.slice(0, -1));
+  };
+
+  const clearAll = () => {
+    const confirmed = window.confirm("Are you sure you want to clear all lines?");
+    if (confirmed) {
+      setLines([]);
+      setSelectedId(null);
+    }
+  };
+
+
+  return (
+      <div className="app-wrapper">
+        <h1>
+          🏝️ Coastline <span className="text-sm">2F Hookah / 2F Billiard</span>
+        </h1>
+
+        <div className="main-layout">
+          <div className="canvas-container">
+            <Stage
+                width={1024}
+                height={768}
+                draggable={false}
+                scaleX={1}
+                scaleY={1}
+                x={0}
+                y={0}
+                onMouseDown={handleMouseDown}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+                className="canvas-stage"
+            >
+              <Layer>
+                <Image
+                    image={image}
+                    scaleX={fitScale}
+                    scaleY={fitScale}
+                    x={imageOffsetX}
+                    y={imageOffsetY}
+                />
+                {lines.map((line) => (
+                    <Line
+                        key={line.id}
+                        points={line.points}
+                        stroke={line.color || "red"}
+                        strokeWidth={selectedId === line.id ? 5 : 3}
+                        tension={0.5}
+                        lineCap="round"
+                        onClick={() => {
+                          if (tool === "select") {
+                            setSelectedId(line.id);
+                          }
+                        }}
+                        shadowEnabled={selectedId === line.id}
+                        shadowColor="white"
+                        shadowBlur={20}
+                        shadowOpacity={0.8}
+                        shadowOffset={{ x: 0, y: 0 }}
+                        strokeScaleEnabled={false}
+                        scaleX={fitScale}
+                        scaleY={fitScale}
+                        x={imageOffsetX}
+                        y={imageOffsetY}
+                    />
+                ))}
+              </Layer>
+            </Stage>
+
+            {/* Toolbar */}
+            <div className="toolbar">
+              <button
+                  className={tool === "select" ? "active" : ""}
+                  onClick={() => setTool("select")}
+                  title="Select"
+              >
+                <MousePointer size={16} />
+              </button>
+
+              <button
+                  className={tool === "pen" ? "active" : ""}
+                  onClick={() => setTool("pen")}
+                  title="Pen"
+              >
+                <Brush size={16} />
+              </button>
+
+              <input
+                  type="color"
+                  value={color}
+                  onChange={(e) => setColor(e.target.value)}
+                  title="Color"
+              />
+
+              <button onClick={undo} disabled={lines.length === 0} title="Undo">
+                <Undo2 size={16} /> Undo
+              </button>
+
+              <button
+                  onClick={deleteSelected}
+                  disabled={!selectedId}
+                  className="delete"
+                  title="Delete"
+              >
+                <Trash2 size={16} /> Delete
+              </button>
+
+              <button onClick={clearAll} disabled={lines.length === 0} title="Clear All">
+                Clear All
+              </button>
+            </div>
+          </div>
+
+          {/* Sidebar */}
+          <div className="sidebar">
+            <div className="sidebar-tabs">
+              <button
+                  className={activeTab === "operators" ? "active" : ""}
+                  onClick={() => setActiveTab("operators")}
+              >
+                Operators
+              </button>
+              <button
+                  className={activeTab === "utility" ? "active" : ""}
+                  onClick={() => setActiveTab("utility")}
+              >
+                Utility
+              </button>
+            </div>
+
+            <div className="sidebar-switch">
+              <button
+                  className={team === "attack" ? "active" : ""}
+                  onClick={() => setTeam("attack")}
+              >
+                Attack
+              </button>
+              <button
+                  className={team === "defense" ? "active" : ""}
+                  onClick={() => setTeam("defense")}
+              >
+                Defense
+              </button>
+            </div>
+
+            <p style={{ marginTop: "16px" }}>
+              Drag and place icons onto the canvas 🙂 (coming SOON...!)
+            </p>
+          </div>
+        </div>
+
+        {/* Notes Panel */}
+        <div className="notes-panel">
+          <div>
+            <h3>Notes</h3>
+            <textarea placeholder="💬 Add further notes to your strategy..." />
+          </div>
+          <div className="note-buttons">
+            <button className="export">Export strategy</button>
+            <button className="save">Save</button>
+            <button className="delete">Delete</button>
+          </div>
+        </div>
+      </div>
   );
 }
+
+
+
