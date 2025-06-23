@@ -1,6 +1,10 @@
-import React, { useState, useRef } from "react";
-import { Stage, Layer, Image, Line } from "react-konva";
+import React, { useState, useRef, useEffect } from "react";
+import { Stage, Layer, Image, Line as KonvaImage, Line } from "react-konva";
 import useImage from "use-image";
+
+import { fetchMapImage } from "../api/getMapImageFromDB";
+
+
 import { nanoid } from "nanoid";
 import "./CanvasApp.css";
 import {
@@ -16,9 +20,12 @@ import {
 import chaletBasement from "../assets/ChaletRWBasement.jpg";
 
 export default function CanvasApp() {
-  const [image] = useImage(chaletBasement);
+  const [chaletBasementImage] = useImage(chaletBasement);
   // Test to save a image
   const stageRef = useRef(null);
+
+  const [imgUrl, setImgUrl] = useState(null);
+  const [dbImage, setDbImage] = useState(null);
 
   const [tool, setTool] = useState("pen");
   const [color, setColor] = useState("#ff0000");
@@ -31,12 +38,12 @@ export default function CanvasApp() {
   const stageWidth = 1024;
   const stageHeight = 768;
 
-  const scaleX = stageWidth / (image?.width || 1);
-  const scaleY = stageHeight / (image?.height || 1);
+  const scaleX = stageWidth / (chaletBasementImage?.width || 1);
+  const scaleY = stageHeight / (chaletBasementImage?.height || 1);
   const fitScale = Math.min(scaleX, scaleY);
 
-  const imageOffsetX = (stageWidth - (image?.width || 0) * fitScale) / 2;
-  const imageOffsetY = (stageHeight - (image?.height || 0) * fitScale) / 2;
+  const imageOffsetX = (stageWidth - (chaletBasementImage?.width || 0) * fitScale) / 2;
+  const imageOffsetY = (stageHeight - (chaletBasementImage?.height || 0) * fitScale) / 2;
 
   // Sidebar Tabs / Switch
   const [activeTab, setActiveTab] = useState("operators");
@@ -106,6 +113,8 @@ export default function CanvasApp() {
     }
   };
 
+
+  //Kyrets 
   const handleSave = async () => {
   if (!stageRef.current) return;
 
@@ -113,8 +122,8 @@ export default function CanvasApp() {
   const blob = await fetch(dataURL).then((res) => res.blob());
   const formData = new FormData();
   formData.append("file", blob, "canvas.png");
-  formData.append("name", "My strategy n"); // Ändra till dynamiskt om du vill
-  formData.append("description", "Beskrivning av st");
+  formData.append("name", "My strateg"); // Ändra till dynamiskt om du vill
+  formData.append("description", "Beskriving av st");
   //formData.append("imageUrl", ""); // Ändra till dynamiskt om du vill
     // url for get http://localhost:8090/api/maps/<id>/image
   try {
@@ -133,6 +142,22 @@ export default function CanvasApp() {
     alert("Failed to upload image.");
   }
 };
+
+ const handleFetchImage = async () => {
+    try {
+      const url = await fetchMapImage(1);
+      const imgObj = new window.Image();
+      imgObj.crossOrigin = "Anonymous";
+      imgObj.src = url;
+      imgObj.onload = () => setDbImage(imgObj); // Sätt databasbilden när den laddats
+      
+    } catch (err) {
+      setDbImage(null);
+      console.error("Error fetching image from database:", err);
+    }
+  };
+
+const imageToShow = dbImage || chaletBasementImage;
 
   return (
       <div className="app-wrapper">
@@ -157,13 +182,14 @@ export default function CanvasApp() {
                 className="canvas-stage"
             >
               <Layer>
-                <Image
-                    image={image}
-                    scaleX={fitScale}
-                    scaleY={fitScale}
-                    x={imageOffsetX}
-                    y={imageOffsetY}
-                />
+                {imageToShow && (
+                  <Image
+                      image={imageToShow}
+                      scaleX={fitScale}
+                      scaleY={fitScale}
+                      x={imageOffsetX}
+                      y={imageOffsetY}
+                  />  )}
                 {lines.map((line) => (
                     <Line
                         key={line.id}
@@ -284,6 +310,15 @@ export default function CanvasApp() {
             <button className="export">Export strategy</button>
             <button className="save" onClick={handleSave}>Save</button> {/* 4. Anropa funktionen här */}
             <button className="delete">Delete</button>
+          <div>
+                <button onClick={handleFetchImage}>Hämta bild från databas</button>
+                
+                <Stage width={800} height={600}>
+                  <Layer>
+                    {dbImage && <KonvaImage image={dbImage} x={0} y={0} />}
+                  </Layer>
+                </Stage>
+          </div>
           </div>
         </div>
       </div>

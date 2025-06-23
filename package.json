@@ -15,7 +15,7 @@
     "nanoid": "^5.1.5",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "react-konva": "^19.0.4",
+    "react-konva": "^19.0.6",
     "use-image": "^1.1.4"
   },
   "devDependencies": {
