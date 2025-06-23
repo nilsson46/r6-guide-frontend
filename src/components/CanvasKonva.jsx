@@ -35,16 +35,26 @@ export default function CanvasApp() {
   const isDrawing = useRef(false);
 
   // Image scaling
-  const stageWidth = 1024;
-  const stageHeight = 768;
+  
+const imageToShow = dbImage || chaletBasementImage;
+const canvasWidth = 1024;
+const canvasHeight = 768;
 
-  const scaleX = stageWidth / (chaletBasementImage?.width || 1);
-  const scaleY = stageHeight / (chaletBasementImage?.height || 1);
-  const fitScale = Math.min(scaleX, scaleY);
+const [fitScale, setFitScale] = useState(1);
+const [imageOffsetX, setImageOffsetX] = useState(0);
+const [imageOffsetY, setImageOffsetY] = useState(0);
 
-  const imageOffsetX = (stageWidth - (chaletBasementImage?.width || 0) * fitScale) / 2;
-  const imageOffsetY = (stageHeight - (chaletBasementImage?.height || 0) * fitScale) / 2;
-
+useEffect(() => {
+  if (imageToShow) {
+    const scale = Math.min(
+      canvasWidth / imageToShow.width,
+      canvasHeight / imageToShow.height
+    );
+    setFitScale(scale);
+    setImageOffsetX((canvasWidth - imageToShow.width * scale) / 2);
+    setImageOffsetY((canvasHeight - imageToShow.height * scale) / 2);
+  }
+}, [imageToShow]);
   // Sidebar Tabs / Switch
   const [activeTab, setActiveTab] = useState("operators");
   const [team, setTeam] = useState("attack");
@@ -122,8 +132,8 @@ export default function CanvasApp() {
   const blob = await fetch(dataURL).then((res) => res.blob());
   const formData = new FormData();
   formData.append("file", blob, "canvas.png");
-  formData.append("name", "My strateg"); // Ändra till dynamiskt om du vill
-  formData.append("description", "Beskriving av st");
+  formData.append("name", "My strategaa"); // Ändra till dynamiskt om du vill
+  formData.append("description", "Beskrivinaaag av st");
   //formData.append("imageUrl", ""); // Ändra till dynamiskt om du vill
     // url for get http://localhost:8090/api/maps/<id>/image
   try {
@@ -141,6 +151,7 @@ export default function CanvasApp() {
     console.error("Network error:", error);
     alert("Failed to upload image.");
   }
+  console.log("Bredd:", imageToShow?.width, "Höjd:", imageToShow?.height);
 };
 
  const handleFetchImage = async () => {
@@ -157,7 +168,8 @@ export default function CanvasApp() {
     }
   };
 
-const imageToShow = dbImage || chaletBasementImage;
+  
+
 
   return (
       <div className="app-wrapper">
