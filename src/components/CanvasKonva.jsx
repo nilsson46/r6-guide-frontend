@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Stage, Layer, Image, Line as KonvaImage, Line } from "react-konva";
+import { Stage, Layer, Image, Line } from "react-konva";
 import useImage from "use-image";
+import { nanoid } from "nanoid";
 
 import { fetchMapImage } from "../api/getMapImageFromDB";
 
 
-import { nanoid } from "nanoid";
 import "./CanvasApp.css";
 import {
   Pen,
@@ -44,6 +44,9 @@ const [fitScale, setFitScale] = useState(1);
 const [imageOffsetX, setImageOffsetX] = useState(0);
 const [imageOffsetY, setImageOffsetY] = useState(0);
 
+console.log("lines i render:", lines);
+
+
 useEffect(() => {
   if (imageToShow) {
     const scale = Math.min(
@@ -74,15 +77,22 @@ useEffect(() => {
     };
 
     const newLine = {
+  id: nanoid(),
+  points: [point.x, point.y],
+  color,
+  strokeWidth: 3, // eller vad du vill ha som standard
+};
+
+    /*const newLine = {
       id: nanoid(),
       points: [point.x, point.y],
       color,
-    };
+    }; */
     setLines([...lines, newLine]);
     setSelectedId(newLine.id);
   };
 
-  const handleMouseMove = (e) => {
+  /*const handleMouseMove = (e) => {
     if (!isDrawing.current || tool !== "pen") return;
 
     const stage = e.target.getStage();
@@ -98,7 +108,29 @@ useEffect(() => {
 
     lines.splice(lines.length - 1, 1, lastLine);
     setLines(lines.concat());
+  }; */
+  const handleMouseMove = (e) => {
+  if (!isDrawing.current || tool !== "pen") return;
+
+  const stage = e.target.getStage();
+  const pointer = stage.getPointerPosition();
+
+  const point = {
+    x: (pointer.x - imageOffsetX) / fitScale,
+    y: (pointer.y - imageOffsetY) / fitScale,
   };
+
+  setLines(prevLines => {
+    if (prevLines.length === 0) return prevLines;
+    const lastLine = prevLines[prevLines.length - 1];
+    const newPoints = [...lastLine.points, point.x, point.y];
+    const updatedLine = { ...lastLine, points: newPoints };
+    return [
+      ...prevLines.slice(0, -1),
+      updatedLine
+    ];
+  });
+};
 
   const handleMouseUp = () => {
     if (tool !== "pen") return;
@@ -110,10 +142,17 @@ useEffect(() => {
     setLines((prev) => prev.filter((line) => line.id !== selectedId));
     setSelectedId(null);
   };
+  
+const undo = () => {
+  console.log("Lines före undo:", lines);
+  setLines(prev => {
+    const newLines = prev.slice(0, -1);
+    console.log("Lines efter undo:", newLines);
+    return newLines;
+  });
+};
 
-  const undo = () => {
-    setLines((prev) => prev.slice(0, -1));
-  };
+  
 
   const clearAll = () => {
     const confirmed = window.confirm("Are you sure you want to clear all lines?");
@@ -128,8 +167,57 @@ useEffect(() => {
   const handleSave = async () => {
   if (!stageRef.current) return;
 
+  // 1. Skapa bild-blob
   const dataURL = stageRef.current.toDataURL({ pixelRatio: 2 });
   const blob = await fetch(dataURL).then((res) => res.blob());
+
+  // 2. Skapa JSON-data för linjer och övrig info
+const payload = {
+  name: "My s1trategi",
+  description: "Beskrivning av st1rategi",
+  userId: 1,
+  lines: lines.map(({ points, color, strokeWidth }) => ({
+    points: points.map(Number), // säkerställ att alla är numbers (Double)
+    color,
+    strokeWidth
+  }))
+};
+
+  // 3. Skicka som FormData
+  const formData = new FormData();
+  formData.append("file", blob, "canvas.png");
+  formData.append("data", JSON.stringify(payload));
+
+  try {
+    const response = await fetch("http://localhost:8090/api/maps/upload-image", {
+      method: "POST",
+      body: formData,
+    });
+
+    if (response.ok) {
+      alert("Image and data uploaded successfully!");
+    } else {
+      alert("Error uploading image and data.");
+    }
+  } catch (error) {
+    console.error("Network error:", error);
+    alert("Failed to upload image and data.");
+  }
+};
+
+
+
+
+
+ /* const handleSave = async () => {
+  if (!stageRef.current) return;
+
+  const dataURL = stageRef.current.toDataURL({ pixelRatio: 2 });
+  const blob = await fetch(dataURL).then((res) => res.blob());
+//TODO check if this is okey in the backend before a try. 
+
+
+
   const formData = new FormData();
   formData.append("file", blob, "canvas.png");
   formData.append("name", "My strategaa"); // Ändra till dynamiskt om du vill
@@ -152,21 +240,43 @@ useEffect(() => {
     alert("Failed to upload image.");
   }
   console.log("Bredd:", imageToShow?.width, "Höjd:", imageToShow?.height);
-};
+}; */
 
- const handleFetchImage = async () => {
-    try {
-      const url = await fetchMapImage(1);
-      const imgObj = new window.Image();
-      imgObj.crossOrigin = "Anonymous";
-      imgObj.src = url;
-      imgObj.onload = () => setDbImage(imgObj); // Sätt databasbilden när den laddats
-      
-    } catch (err) {
-      setDbImage(null);
-      console.error("Error fetching image from database:", err);
-    }
-  };
+ /* const payload = {
+    userId: currentUserId, // <-- sätt detta från din inloggning/session
+    name: "My strategi",
+    description: "Beskrivning av strategi",
+    lines: lines, // <-- din lines-array
+    // imageId: ... // om du vill koppla till en bakgrundsbild
+  }; */ 
+
+
+
+const handleFetchImage = async () => {
+  try {
+    const response = await fetch(`http://localhost:8090/api/maps/1/All`);
+    const data = await response.json();
+
+    // Sätt bilden
+    const imgUrl = `data:image/png;base64,${data.imageData}`;
+    const imgObj = new window.Image();
+    imgObj.crossOrigin = "Anonymous";
+    imgObj.src = imgUrl;
+    imgObj.onload = () => setDbImage(imgObj);
+
+    // Tilldela id till varje line om det saknas
+    const linesWithId = data.lines.map(line => ({
+      ...line,
+      id: nanoid()
+    }));
+    setLines(linesWithId);
+
+  } catch (err) {
+    setDbImage(null);
+    setLines([]);
+    console.error("Error fetching image and lines from database:", err);
+  }
+};
 
   
 
@@ -193,7 +303,7 @@ useEffect(() => {
                 onMouseUp={handleMouseUp}
                 className="canvas-stage"
             >
-              <Layer>
+              <Layer key={lines.map(l => l.id).join("-")}>
                 {imageToShow && (
                   <Image
                       image={imageToShow}
@@ -325,11 +435,7 @@ useEffect(() => {
           <div>
                 <button onClick={handleFetchImage}>Hämta bild från databas</button>
                 
-                <Stage width={800} height={600}>
-                  <Layer>
-                    {dbImage && <KonvaImage image={dbImage} x={0} y={0} />}
-                  </Layer>
-                </Stage>
+               
           </div>
           </div>
         </div>
