@@ -164,6 +164,7 @@ const undo = () => {
 
 
   //Kyrets 
+  /*
   const handleSave = async () => {
   if (!stageRef.current) return;
 
@@ -204,7 +205,52 @@ const payload = {
     alert("Failed to upload image and data.");
   }
 };
+*/
+const handleSaveBackground = async (file, name, description, userId) => {
+  const formData = new FormData();
+  formData.append("file", file); // originalbilden, inte canvas
+  formData.append("name", name);
+  formData.append("description", description);
+  formData.append("userId", userId);
 
+  try {
+    const response = await fetch("http://localhost:8090/api/maps/upload-background", {
+      method: "POST",
+      body: formData,
+    });
+    if (response.ok) {
+      alert("Bakgrundsbild uppladdad!");
+    } else {
+      alert("Fel vid uppladdning av bakgrundsbild.");
+    }
+  } catch (error) {
+    alert("Nätverksfel vid uppladdning av bakgrundsbild.");
+  }
+};
+
+const saveLines = async (mapId, lines) => {
+  const payload = lines.map(({ points, color, strokeWidth }) => ({
+    points,
+    color,
+    strokeWidth
+  }));
+
+  await fetch(`http://localhost:8090/api/maps/${mapId}/lines`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+};
+
+const fetchLines = async (mapId) => {
+  const response = await fetch(`http://localhost:8090/api/maps/${mapId}/lines`);
+  const data = await response.json();
+  const linesWithId = data.map(line => ({
+    ...line,
+    id: nanoid()
+  }));
+  setLines(linesWithId);
+};
 
 
 
@@ -430,11 +476,19 @@ const handleFetchImage = async () => {
           </div>
           <div className="note-buttons">
             <button className="export">Export strategy</button>
-            <button className="save" onClick={handleSave}>Save</button> {/* 4. Anropa funktionen här */}
+            {/*<button className="save" onClick={handleSave}>Save</button> {/* 4. Anropa funktionen här */}*/}
             <button className="delete">Delete</button>
           <div>
                 <button onClick={handleFetchImage}>Hämta bild från databas</button>
-                
+                <button onClick={() => { 
+                  fetchLines(1);
+                  }}>
+  Hämta strategi
+</button>
+
+<button onClick={() => saveLines(1, lines)}>
+  Spara linjer
+</button>
                
           </div>
           </div>
@@ -442,6 +496,3 @@ const handleFetchImage = async () => {
       </div>
   );
 }
-
-
-
