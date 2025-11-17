@@ -137,8 +137,29 @@ useEffect(() => {
     isDrawing.current = false;
   };
 
-  const deleteSelected = () => {
+  const deleteSelected = async () => {
     if (!selectedId) return;
+    
+    // Hitta den valda linjen för att få dess databas-ID
+    const selectedLine = lines.find(line => line.id === selectedId);
+    
+    if (selectedLine && selectedLine.lineId) {
+      // Om linjen har ett databas-ID, radera från backend
+      try {
+        const response = await fetch(`http://localhost:8090/api/maps/lines/${selectedLine.lineId}`, {
+          method: "DELETE"
+        });
+        if (response.ok) {
+          console.log("Linje raderad från databas");
+        } else {
+          console.error("Fel vid radering från databas");
+        }
+      } catch (error) {
+        console.error("Nätverksfel vid radering:", error);
+      }
+    }
+    
+    // Radera från frontend
     setLines((prev) => prev.filter((line) => line.id !== selectedId));
     setSelectedId(null);
   };
@@ -247,9 +268,26 @@ const fetchLines = async (mapId) => {
   const data = await response.json();
   const linesWithId = data.map(line => ({
     ...line,
-    id: nanoid()
+    lineId: line.id, // Spara databas-ID
+    id: nanoid() // Nytt ID för React
   }));
   setLines(linesWithId);
+};
+
+const deleteLine = async (lineId) => {
+  try {
+    const response = await fetch(`http://localhost:8090/api/maps/lines/${lineId}`, {
+      method: "DELETE"
+    });
+    if (response.ok) {
+      alert("Linje raderad!");
+    } else {
+      alert("Fel vid radering av linje.");
+    }
+  } catch (error) {
+    console.error("Nätverksfel vid radering:", error);
+    alert("Kunde inte radera linjen.");
+  }
 };
 
 
@@ -313,7 +351,8 @@ const handleFetchImage = async () => {
     // Tilldela id till varje line om det saknas
     const linesWithId = data.lines.map(line => ({
       ...line,
-      id: nanoid()
+      lineId: line.id, // Spara databas-ID
+      id: nanoid() // Nytt ID för React
     }));
     setLines(linesWithId);
 
@@ -369,6 +408,7 @@ const handleFetchImage = async () => {
                         onClick={() => {
                           if (tool === "select") {
                             setSelectedId(line.id);
+                            console.log("Vald linje - React ID:", line.id, "Databas ID:", line.lineId);
                           }
                         }}
                         shadowEnabled={selectedId === line.id}

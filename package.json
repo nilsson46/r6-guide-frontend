@@ -10,12 +10,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "konva": "^9.3.20",
+    "konva": "^9.3.22",
     "lucide-react": "^0.513.0",
-    "nanoid": "^5.1.5",
+    "nanoid": "^5.1.6",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "react-konva": "^19.0.6",
+    "react-konva": "^19.2.0",
     "use-image": "^1.1.4"
   },
   "devDependencies": {
